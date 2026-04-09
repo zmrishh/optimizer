@@ -1,6 +1,6 @@
 {
   "name": "depopsy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Understand why your dependencies are bloated — detect and fix duplicated packages in your lockfile.",
   "bin": {
     "depopsy": "bin/cli.js"
