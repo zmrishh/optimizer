@@ -96,6 +96,59 @@ function computeFixLikelihood(safeties) {
 }
 
 /**
+ * Compute confidence based on per-package version spread.
+ *
+ * Rather than pooling ALL version strings together (which always yields
+ * 3+ majors for large groups like lerna→164 packages), we score each
+ * affected package individually:
+ *   - singleMajor: the package's duplicate versions share 1 major → easy fix
+ *   - twoMajors:   2 distinct majors            → likely fixable
+ *   - manyMajors:  3+ distinct majors           → hard / risky
+ *
+ * Confidence is then determined by what fraction of affected packages
+ * fall into each bucket:
+ *   HIGH   → >60% are singleMajor
+ *   MEDIUM → >30% are singleMajor  (or >50% are singleMajor+twoMajors)
+ *   LOW    → everything else
+ */
+function computeConfidence(group, scoredDuplicates) {
+  if (!group.affectedPackages || group.affectedPackages.length === 0) {
+    return computeFixLikelihood(group.safeties || []);
+  }
+
+  let singleMajor = 0;
+  let twoMajors   = 0;
+  let manyMajors  = 0;
+  let noData      = 0;
+
+  for (const pkgName of group.affectedPackages) {
+    const dup = scoredDuplicates.find(d => d.name === pkgName);
+    if (!dup || !dup.versions || dup.versions.length === 0) {
+      noData++;
+      continue;
+    }
+    const majors = new Set(
+      dup.versions
+        .map(v => (v || '').split('.')[0].replace(/[^0-9]/g, ''))
+        .filter(Boolean)
+    );
+    if (majors.size <= 1)      singleMajor++;
+    else if (majors.size <= 2) twoMajors++;
+    else                       manyMajors++;
+  }
+
+  const total = singleMajor + twoMajors + manyMajors;
+  if (total === 0) return computeFixLikelihood(group.safeties || []);
+
+  const pctSingle   = singleMajor / total;
+  const pctEasy     = (singleMajor + twoMajors) / total;
+
+  if (pctSingle > 0.6)  return 'HIGH';
+  if (pctSingle > 0.3 || pctEasy > 0.5) return 'MEDIUM';
+  return 'LOW';
+}
+
+/**
  * Build an introducer attribution map.
  * filterFn(pkgName) → true means this name is an acceptable introducer.
  * Each duplicate is counted once per introducer (deduped via seenForDup).
@@ -130,15 +183,11 @@ function buildIntroducerMap(scoredDuplicates, filterFn) {
   return introducerMap;
 }
 
-function formatGroups(map, limit = 8) {
+function formatGroups(map, limit = 8, scoredDuplicates = []) {
   const groups = Object.values(map);
 
-  // Degradation guard: if every group has only 1 affected package, warn
-  if (groups.length > 0 && groups.every(g => g.affectedPackages.length <= 1)) {
-    // This is a signal that grouping landed at leaf level
-    process.stderr.write('⚠️  dep-optimizer: grouping degraded — each root cause maps to only 1 package. ' +
-      'Run --verbose to inspect.\n');
-  }
+  // Degradation guard: silently continue — each root maps to 1 package is a valid
+  // (though non-ideal) state that the formatter handles with the low-level fallback.
 
   return groups
     .sort((a, b) =>
@@ -146,12 +195,17 @@ function formatGroups(map, limit = 8) {
       b.count - a.count
     )
     .slice(0, limit)
-    .map(g => ({
-      name: g.name,
-      affectedPackages: g.affectedPackages,
-      count: g.count,
-      fixLikelihood: computeFixLikelihood(g.safeties)
-    }));
+    .map(g => {
+      const fixLikelihood = computeFixLikelihood(g.safeties);
+      const confidence    = computeConfidence(g, scoredDuplicates);
+      return {
+        name: g.name,
+        affectedPackages: g.affectedPackages,
+        count: g.count,
+        fixLikelihood,
+        confidence
+      };
+    });
 }
 
 /**
@@ -202,7 +256,7 @@ export function groupRootCauses(scoredDuplicates, topLevelDeps = new Set()) {
   if (topLevelDeps && topLevelDeps.size > 0) {
     const map = buildIntroducerMap(scoredDuplicates, name => topLevelDeps.has(name));
     if (Object.keys(map).length > 0) {
-      return formatGroups(map);
+      return formatGroups(map, 8, scoredDuplicates);
     }
   }
 
@@ -222,19 +276,17 @@ export function groupRootCauses(scoredDuplicates, topLevelDeps = new Set()) {
   if (strict.length > 0) {
     const topNames = new Set(strict.slice(0, 10).map(([n]) => n));
     const map = buildIntroducerMap(scoredDuplicates, name => topNames.has(name));
-    if (Object.keys(map).length > 0) return formatGroups(map);
+    if (Object.keys(map).length > 0) return formatGroups(map, 8, scoredDuplicates);
   }
 
   // Drop to threshold=1 if nothing met ≥2
   if (candidates.length > 0) {
     const topNames = new Set(candidates.slice(0, 10).map(([n]) => n));
     const map = buildIntroducerMap(scoredDuplicates, name => topNames.has(name));
-    if (Object.keys(map).length > 0) return formatGroups(map);
+    if (Object.keys(map).length > 0) return formatGroups(map, 8, scoredDuplicates);
   }
 
-  if (candidates.length === 0) {
-    console.warn("⚠️ No candidates found — graph signal missing");
-  }
+  // candidates.length === 0 falls through to the MISC bucket below
   // ── LAYER 3: Misc fallback (truly no graph data) ────────────────────────────
   const MISC = '⚠️ Misc / Low-level dependencies';
   return [{

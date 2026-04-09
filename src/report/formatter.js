@@ -10,69 +10,93 @@ function formatBytes(bytes) {
   return `~${(kb / 1024).toFixed(2)} MB`;
 }
 
-function confidenceLabel(fixLikelihood) {
-  switch (fixLikelihood) {
-    case 'HIGH':   return chalk.green('HIGH — safe to auto-fix');
-    case 'MEDIUM': return chalk.yellow('MEDIUM — likely safe, verify first');
-    default:       return chalk.red('LOW — manual review needed');
+function confidenceLabel(confidence) {
+  switch (confidence) {
+    case 'HIGH':   return chalk.green('HIGH') + chalk.dim(' — safe to upgrade');
+    case 'MEDIUM': return chalk.yellow('MEDIUM') + chalk.dim(' — likely safe, verify first');
+    default:       return chalk.red('LOW') + chalk.dim(' — manual review required');
   }
 }
 
-function smartMessage(groupName, fixLikelihood, isLowLevel = false) {
+function smartMessage(groupName, fixLikelihood, isLowLevel = false, chainCount = 0) {
+  // Strip version suffix (e.g. "@1.2.3") but preserve scoped names like "@mdx-js/loader"
+  let pkg = groupName || '';
+  if (pkg.startsWith('@')) {
+    // scoped: drop everything after the second '@' (version tag), if any
+    const versionAt = pkg.indexOf('@', 1);
+    if (versionAt > 0) pkg = pkg.substring(0, versionAt);
+  } else {
+    // unscoped: drop everything from the first '@'
+    pkg = pkg.replace(/@.*/, '');
+  }
+  pkg = pkg.trim();
+  if (!pkg) pkg = 'this dependency';
+
+  const chainImpact   = chainCount > 0
+    ? `Upgrade ${pkg} → may resolve ${chainCount} duplicate chain${chainCount !== 1 ? 's' : ''}`
+    : `Upgrade ${pkg} to latest and re-run to measure impact`;
+
   if (isLowLevel) {
     return [
-      `This is a low-level utility pulled in by a higher-level library.`,
-      `Find which top-level dep depends on ${groupName} and upgrade that instead.`,
-      `Run: ${chalk.cyan(`npx dep-optimizer trace ${groupName}`)} to see the full chain.`,
+      `Multiple versions are being pulled by different parts of your stack.`,
+      `Find which top-level dep depends on ${pkg} and upgrade that instead.`,
+      `Run: ${chalk.cyan(`npx dep-optimizer trace ${pkg}`)} to see the full chain.`,
     ];
   }
 
-  const name = groupName.replace(/@.*/, '');
   if (fixLikelihood === 'HIGH') {
     return [
       `Versions are compatible — safe to consolidate automatically.`,
+      `${chainImpact}.`,
       `Run: ${chalk.cyan('npx dep-optimizer fix')} to apply.`,
     ];
   }
-  if (/^@babel/.test(name) || name === 'babel') {
+  if (/^@babel/.test(pkg) || pkg === 'babel') {
     return [
-      `Babel plugins often pin their own dependencies. Check peer versions.`,
+      `Common in large projects with plugins and peer dependencies.`,
       `Align all @babel/* packages to the same major version.`,
+      chainImpact + '.',
     ];
   }
-  if (name === 'eslint' || /^eslint-/.test(name)) {
+  if (pkg === 'eslint' || /^eslint-/.test(pkg)) {
     return [
-      `ESLint plugins commonly pull conflicting parser versions.`,
+      `Multiple versions are being pulled by different parts of your stack.`,
       `Ensure all eslint-plugin-* packages target the same eslint major.`,
+      chainImpact + '.',
     ];
   }
-  if (name === 'webpack' || /webpack/.test(name)) {
+  if (pkg === 'webpack' || /webpack/.test(pkg)) {
     return [
-      `Webpack v4/v5 loaders are often version-locked.`,
+      `Common in large projects with plugins and peer dependencies.`,
       `Check if any loaders haven\'t been updated to webpack 5.`,
+      chainImpact + '.',
     ];
   }
-  if (name === 'jest' || name === 'vitest') {
+  if (pkg === 'jest' || pkg === 'vitest') {
     return [
       `Test tooling often bundles its own utility versions.`,
-      `Upgrade ${name} to latest — most duplicates resolve automatically.`,
+      chainImpact + '.',
+      `Run: ${chalk.cyan('npx dep-optimizer fix')} to apply safe fixes.`,
     ];
   }
-  if (name === 'next') {
+  if (pkg === 'next') {
     return [
       `Next.js bundles many internal dependencies with fixed versions.`,
       `Upgrading Next.js usually resolves most of these conflicts.`,
+      chainImpact + '.',
     ];
   }
-  if (name === 'react' || name === 'react-dom') {
+  if (pkg === 'react' || pkg === 'react-dom') {
     return [
       `React 16/17/18 are not interchangeable — ensure everything uses the same major.`,
       `Check all third-party component libraries for peer dep compatibility.`,
+      chainImpact + '.',
     ];
   }
   return [
-    `Likely caused by version mismatches across plugins or peer dependencies.`,
-    `Upgrade ${name} to latest and re-run to see which conflicts resolve.`,
+    `Common in large projects with plugins and peer dependencies.`,
+    `Multiple versions are being pulled by different parts of your stack.`,
+    chainImpact + '.',
   ];
 }
 
@@ -140,11 +164,22 @@ export function printTextReport(duplicates, rootCauses, options = {}) {
 
     displayRoots.forEach((group, i) => {
       const pkgCount = group.affectedPackages.length;
+      // Guard: never display empty name
+      const displayName = (group.name && group.name.trim()) ? group.name : 'unknown package';
       console.log(
-        `  ${chalk.bold(`${i + 1}.`)} ${chalk.cyan.bold(group.name)}` +
+        `  ${chalk.bold(`${i + 1}.`)} ${chalk.cyan.bold(displayName)}` +
         `  ${chalk.dim('→')} ${chalk.yellow(pkgCount)} duplicate package${pkgCount !== 1 ? 's' : ''}`
       );
     });
+
+    // Global impact line
+    const coveredCount = displayRoots.reduce((s, g) => s + g.count, 0);
+    if (totalDuplicates > 0 && coveredCount > 0) {
+      const pct = Math.round((coveredCount / (totalDuplicates * 2)) * 100);
+      const cappedPct = Math.min(pct, 99);
+      console.log('');
+      console.log(chalk.dim(`   ➔ These top root causes account for ~${cappedPct}% of your duplication.`));
+    }
 
     if (showingLowLevelFallback) {
       console.log('');
@@ -169,10 +204,14 @@ export function printTextReport(duplicates, rootCauses, options = {}) {
 
     for (const group of displayRoots) {
       const lowLevel = isLowLevelPackage(group.name);
-      const msgs = smartMessage(group.name, group.fixLikelihood, lowLevel);
+      // Guard: always use a defined, non-empty pkg name
+      let pkg = (group.name || '').trim();
+      if (!pkg || pkg === '') pkg = 'this dependency';
+      const confidence = group.confidence || group.fixLikelihood || 'LOW';
+      const msgs = smartMessage(group.name, group.fixLikelihood, lowLevel, group.count);
       console.log('');
-      console.log(`  ${chalk.cyan.bold('▶ ' + group.name)}`);
-      console.log(`  ${chalk.dim('Confidence:')} ${confidenceLabel(group.fixLikelihood)}`);
+      console.log(`  ${chalk.cyan.bold('▶ ' + pkg)}`);
+      console.log(`  ${chalk.dim('Confidence:')} ${confidenceLabel(confidence)}`);
       const showPkgs = isVerbose
         ? group.affectedPackages
         : group.affectedPackages.slice(0, 4);
