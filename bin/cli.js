@@ -19,19 +19,19 @@ try {
 }
 
 program
-  .name('dep-optimizer')
+  .name('depopsy')
   .description('NPM doctor for dependency bloat. Detects and resolves duplicated dependencies in your lockfile.')
   .version(version, '-v, --version', 'Output the current version')
   .addHelpText('after', `
 Examples:
-  $ dep-optimizer                   Full dependency health report
-  $ dep-optimizer --simple          Top 3 root causes only
-  $ dep-optimizer --verbose         Full breakdown of every group
-  $ dep-optimizer --json            JSON output for CI/CD pipelines
-  $ dep-optimizer --ci              Minimal JSON + exit codes for CI
-  $ dep-optimizer fix               Dry-run safe deduplication fixes
-  $ dep-optimizer fix --yes         Apply fixes to package.json
-  $ dep-optimizer trace <pkg>       Trace a package to its root cause
+  $ depopsy                   Full dependency health report
+  $ depopsy --simple          Top 3 root causes only
+  $ depopsy --verbose         Full breakdown of every group
+  $ depopsy --json            JSON output for CI/CD pipelines
+  $ depopsy --ci              Minimal JSON + exit codes for CI
+  $ depopsy fix               Dry-run safe deduplication fixes
+  $ depopsy fix --yes         Apply fixes to package.json
+  $ depopsy trace <pkg>       Trace a package to its root cause
 `);
 
 setupCommands(program);

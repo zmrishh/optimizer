@@ -1,9 +1,9 @@
 {
-  "name": "dep-optimizer",
+  "name": "depopsy",
   "version": "1.0.0",
-  "description": "The npm doctor for dependency chaos. Understand why your dependencies are bloated — and fix them safely.",
+  "description": "Understand why your dependencies are bloated — detect and fix duplicated packages in your lockfile.",
   "bin": {
-    "dep-optimizer": "bin/cli.js"
+    "depopsy": "bin/cli.js"
   },
   "files": [
     "bin/",
@@ -31,15 +31,15 @@
     "root-cause",
     "package-manager"
   ],
-  "author": "dep-optimizer contributors",
+  "author": "depopsy contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dep-optimizer/dep-optimizer"
+    "url": "https://github.com/zmrishh/depopsy.git"
   },
-  "homepage": "https://github.com/dep-optimizer/dep-optimizer#readme",
+  "homepage": "https://github.com/zmrishh/depopsy#readme",
   "bugs": {
-    "url": "https://github.com/dep-optimizer/dep-optimizer/issues"
+    "url": "https://github.com/zmrishh/depopsy/issues"
   },
   "dependencies": {
     "@yarnpkg/lockfile": "^1.1.0",

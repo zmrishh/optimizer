@@ -44,7 +44,7 @@ export async function applyFixes(scoredDuplicates, projectDir, isDryRun, package
 
   if (isDryRun) {
     console.log(chalk.yellow('\n⚠️  This is a DRY RUN. No files have been modified.'));
-    console.log(`To apply these changes and update your package.json, run:\n  ${chalk.cyan('npx dep-optimizer fix --yes')}\n`);
+    console.log(`To apply these changes and update your package.json, run:\n  ${chalk.cyan('npx depopsy fix --yes')}\n`);
     return;
   }
 
@@ -68,7 +68,7 @@ export async function applyFixes(scoredDuplicates, projectDir, isDryRun, package
 
   // Backup files
   try {
-    const backupDir = path.join(projectDir, '.dep-optimizer-backup');
+    const backupDir = path.join(projectDir, '.depopsy-backup');
     await fs.mkdir(backupDir, { recursive: true });
     await fs.writeFile(path.join(backupDir, 'package.json.bak'), pkgContent);
     console.log(chalk.dim(`\nBacked up package.json to ${backupDir}`));

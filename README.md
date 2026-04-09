@@ -1,13 +1,13 @@
 <div align="center">
 
-# dep-optimizer
+# Depopsy 🚀
 
 ### The npm doctor for dependency chaos.
 
 **Understand *why* your dependencies are bloated — and fix them safely.**
 
-[![npm version](https://img.shields.io/npm/v/dep-optimizer?color=crimson&label=npm&logo=npm)](https://www.npmjs.com/package/dep-optimizer)
-[![npm downloads](https://img.shields.io/npm/dm/dep-optimizer?color=blue&logo=npm)](https://www.npmjs.com/package/dep-optimizer)
+[![npm version](https://img.shields.io/npm/v/depopsy?color=crimson&label=npm&logo=npm)](https://www.npmjs.com/package/depopsy)
+[![npm downloads](https://img.shields.io/npm/dm/depopsy?color=blue&logo=npm)](https://www.npmjs.com/package/depopsy)
 [![Node.js >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen?logo=node.js)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](./LICENSE)
 ![Supports npm · yarn · pnpm](https://img.shields.io/badge/supports-npm%20%C2%B7%20yarn%20%C2%B7%20pnpm-8A2BE2)
@@ -26,7 +26,7 @@ This leads to:
 - 📦 **Larger bundles** — your end users download the bloat too
 - 🐛 **Subtle runtime bugs** — packages that check `instanceof` silently break when two versions exist
 
-`npm dedupe` tells you *what* is duplicated. `dep-optimizer` tells you ***why*** — and fixes it safely.
+`npm dedupe` tells you *what* is duplicated. `depopsy` tells you ***why*** — and fixes it safely.
 
 ---
 
@@ -35,13 +35,13 @@ This leads to:
 Zero install required. Run it at the root of **any** npm, yarn, or pnpm project:
 
 ```bash
-npx dep-optimizer
+npx depopsy
 ```
 
 For a quick 3-line summary:
 
 ```bash
-npx dep-optimizer --simple
+npx depopsy --simple
 ```
 
 ---
@@ -81,7 +81,7 @@ Detected Package Manager: npm
   → Upgrade jest to latest — may resolve 19 duplicate chains.
 
 ⚡ Quick Fix
-   Run:  npx dep-optimizer fix
+   Run:  npx depopsy fix
    (applies 0 SAFE fixes automatically — no breaking changes)
 
 📊 Summary
@@ -100,15 +100,15 @@ Detected Package Manager: npm
 
 | Command | Description |
 |---|---|
-| `npx dep-optimizer` | Full dependency health report |
-| `npx dep-optimizer --simple` | Top 3 root causes only |
-| `npx dep-optimizer --verbose` | Full breakdown of every group |
-| `npx dep-optimizer --top <n>` | Limit root cause output to top N groups |
-| `npx dep-optimizer --json` | JSON output for CI/CD pipelines |
-| `npx dep-optimizer --ci` | Minimal JSON with correct exit codes |
-| `npx dep-optimizer fix` | Dry-run: preview safe deduplication fixes |
-| `npx dep-optimizer fix --yes` | Apply fixes directly to `package.json` |
-| `npx dep-optimizer trace <pkg>` | Trace which top-level dep introduces `<pkg>` |
+| `npx depopsy` | Full dependency health report |
+| `npx depopsy --simple` | Top 3 root causes only |
+| `npx depopsy --verbose` | Full breakdown of every group |
+| `npx depopsy --top <n>` | Limit root cause output to top N groups |
+| `npx depopsy --json` | JSON output for CI/CD pipelines |
+| `npx depopsy --ci` | Minimal JSON with correct exit codes |
+| `npx depopsy fix` | Dry-run: preview safe deduplication fixes |
+| `npx depopsy fix --yes` | Apply fixes directly to `package.json` |
+| `npx depopsy trace <pkg>` | Trace which top-level dep introduces `<pkg>` |
 
 ### Exit Codes
 
@@ -161,14 +161,14 @@ Low-level utility packages (`chalk`, `semver`, `minimatch`, `glob`, etc.) are au
 
 ## The `fix` Command
 
-`dep-optimizer fix` only touches **SAFE** duplicates — packages where all versions share the same major version (semver-compatible).
+`depopsy fix` only touches **SAFE** duplicates — packages where all versions share the same major version (semver-compatible).
 
 ```bash
 # Preview what would change (no files modified)
-npx dep-optimizer fix
+npx depopsy fix
 
 # Apply changes to package.json
-npx dep-optimizer fix --yes
+npx depopsy fix --yes
 ```
 
 After running `fix --yes`, you **must** reinstall to apply the overrides to your lockfile:
@@ -185,7 +185,7 @@ npm install    # or yarn install / pnpm install
 | yarn | `"resolutions"` in `package.json` |
 | pnpm | `"pnpm.overrides"` in `package.json` |
 
-A backup of your original `package.json` is saved to `.dep-optimizer-backup/` before any write.
+A backup of your original `package.json` is saved to `.depopsy-backup/` before any write.
 
 ---
 
@@ -194,7 +194,7 @@ A backup of your original `package.json` is saved to `.dep-optimizer-backup/` be
 Trace exactly which top-level dependencies are responsible for pulling in a given package:
 
 ```bash
-npx dep-optimizer trace semver
+npx depopsy trace semver
 ```
 
 ```
@@ -228,14 +228,14 @@ Tracing "semver" through dependency graph...
 
 ```yaml
 - name: Check for duplicate dependencies
-  run: npx dep-optimizer --ci
+  run: npx depopsy --ci
   # Exits 1 if duplicates found, 0 if clean
 ```
 
 ### JSON output for custom scripting
 
 ```bash
-npx dep-optimizer --json > dep-report.json
+npx depopsy --json > dep-report.json
 ```
 
 ```json
@@ -258,7 +258,7 @@ npx dep-optimizer --json > dep-report.json
 
 **Q: How is this different from `npm dedupe`?**
 
-`npm dedupe` reorganizes `node_modules` at install time but doesn't prevent the problem from recurring. `dep-optimizer` analyzes your *lockfile* to explain the root cause and writes `overrides`/`resolutions` to your `package.json` — so the deduplication survives a fresh `npm install`.
+`npm dedupe` reorganizes `node_modules` at install time but doesn't prevent the problem from recurring. `depopsy` analyzes your *lockfile* to explain the root cause and writes `overrides`/`resolutions` to your `package.json` — so the deduplication survives a fresh `npm install`.
 
 **Q: Is it safe to run on production projects?**
 
@@ -270,11 +270,11 @@ Yes. It automatically detects workspace packages and excludes them from root cau
 
 **Q: Why does it show "RISKY" for some duplicates?**
 
-RISKY means the duplicate versions span **multiple major versions** (e.g., `react@17` and `react@18`). These cannot be safely auto-aligned because major version bumps can include breaking changes. Use `dep-optimizer trace <pkg>` to understand which dependency is causing it.
+RISKY means the duplicate versions span **multiple major versions** (e.g., `react@17` and `react@18`). These cannot be safely auto-aligned because major version bumps can include breaking changes. Use `depopsy trace <pkg>` to understand which dependency is causing it.
 
 **Q: Why don't I see `semver` or `chalk` as root causes?**
 
-These are *leaf* utility packages — they are always pulled in transitively, never directly causing bloat. `dep-optimizer` suppresses them from root cause output to keep results actionable. Use `--verbose` or `trace` to inspect them.
+These are *leaf* utility packages — they are always pulled in transitively, never directly causing bloat. `depopsy` suppresses them from root cause output to keep results actionable. Use `--verbose` or `trace` to inspect them.
 
 ---
 
@@ -288,8 +288,8 @@ These are *leaf* utility packages — they are always pulled in transitively, ne
 ## Contributing
 
 ```bash
-git clone https://github.com/dep-optimizer/dep-optimizer
-cd dep-optimizer
+git clone https://github.com/depopsy/depopsy
+cd depopsy
 npm install
 npm test
 ```
@@ -300,7 +300,7 @@ Please open an issue before submitting a pull request for significant changes.
 
 ## License
 
-[MIT](./LICENSE) © 2026 dep-optimizer contributors
+[MIT](./LICENSE) © 2026 depopsy contributors
 
 ---
 

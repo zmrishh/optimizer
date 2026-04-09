@@ -92,7 +92,7 @@ export async function commandTrace(pkgArg, options) {
     console.log(chalk.dim('─'.repeat(50)));
     if (target.suggestedVersion) {
       console.log(`  💡 Suggested fix: align all to ${chalk.green(target.suggestedVersion)}`);
-      console.log(chalk.dim(`     Run: npx dep-optimizer fix\n`));
+      console.log(chalk.dim(`     Run: npx depopsy fix\n`));
     } else {
       console.log(chalk.dim(`  ⚠  No auto-fix available — versions span multiple majors.\n`));
     }

@@ -40,7 +40,7 @@ function smartMessage(groupName, fixLikelihood, isLowLevel = false, chainCount =
     return [
       `Multiple versions are being pulled by different parts of your stack.`,
       `Find which top-level dep depends on ${pkg} and upgrade that instead.`,
-      `Run: ${chalk.cyan(`npx dep-optimizer trace ${pkg}`)} to see the full chain.`,
+      `Run: ${chalk.cyan(`npx depopsy trace ${pkg}`)} to see the full chain.`,
     ];
   }
 
@@ -48,7 +48,7 @@ function smartMessage(groupName, fixLikelihood, isLowLevel = false, chainCount =
     return [
       `Versions are compatible — safe to consolidate automatically.`,
       `${chainImpact}.`,
-      `Run: ${chalk.cyan('npx dep-optimizer fix')} to apply.`,
+      `Run: ${chalk.cyan('npx depopsy fix')} to apply.`,
     ];
   }
   if (/^@babel/.test(pkg) || pkg === 'babel') {
@@ -76,7 +76,7 @@ function smartMessage(groupName, fixLikelihood, isLowLevel = false, chainCount =
     return [
       `Test tooling often bundles its own utility versions.`,
       chainImpact + '.',
-      `Run: ${chalk.cyan('npx dep-optimizer fix')} to apply safe fixes.`,
+      `Run: ${chalk.cyan('npx depopsy fix')} to apply safe fixes.`,
     ];
   }
   if (pkg === 'next') {
@@ -225,7 +225,7 @@ export function printTextReport(duplicates, rootCauses, options = {}) {
   if (safeCounts > 0) {
     console.log('');
     console.log(chalk.bold.white('⚡ Quick Fix'));
-    console.log(`   Run:  ${chalk.cyan.bold('npx dep-optimizer fix')}`);
+    console.log(`   Run:  ${chalk.cyan.bold('npx depopsy fix')}`);
     console.log(chalk.dim(`   (applies ${safeCounts} SAFE fix${safeCounts !== 1 ? 'es' : ''} automatically — no breaking changes)`));
   }
 
@@ -253,7 +253,7 @@ export function printTextReport(duplicates, rootCauses, options = {}) {
   console.log(chalk.dim('💡 Tip: Even well-maintained projects have duplicates.'));
   console.log(chalk.dim('   This tool explains *why* — not just what.'));
   if (lowLevelRoots.length > 0 && !showingLowLevelFallback) {
-    console.log(chalk.dim(`   Run: ${chalk.white('npx dep-optimizer trace <pkg>')} to trace any package to its source.\n`));
+    console.log(chalk.dim(`   Run: ${chalk.white('npx depopsy trace <pkg>')} to trace any package to its source.\n`));
   } else {
     console.log('');
   }
