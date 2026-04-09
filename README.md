@@ -288,7 +288,7 @@ These are *leaf* utility packages — they are always pulled in transitively, ne
 ## Contributing
 
 ```bash
-git clone https://github.com/depopsy/depopsy
+git clone https://github.com/zmrishh/depopsy
 cd depopsy
 npm install
 npm test
